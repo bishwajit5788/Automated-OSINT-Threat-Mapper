@@ -1,0 +1,109 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #050811;
+    color: #f1f5f9;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0f1d;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* ReactFlow Cyberpunk Dark Theme Customizations */
+.react-flow__background {
+  background-color: #050811 !important;
+}
+
+.react-flow__minimap {
+  background-color: #0a0f1d !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+.react-flow__controls {
+  background-color: #0a0f1d !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+.react-flow__controls-button {
+  background-color: #0a0f1d !important;
+  border-bottom: 1px solid #1e293b !important;
+  color: #94a3b8 !important;
+  fill: #94a3b8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #1e293b !important;
+  color: #06b6d4 !important;
+  fill: #06b6d4 !important;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2 !important;
+  transition: stroke 0.3s ease, stroke-width 0.3s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #06b6d4 !important;
+  stroke-width: 3 !important;
+}
+
+/* Cyber Scanning Grid Background Overlay */
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Glassmorphic Panel */
+.glass-panel {
+  background: rgba(10, 15, 29, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(30, 41, 59, 0.7);
+}
+
+.glass-panel-glow {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.15);
+}
+
+.danger-glow {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.35);
+}
+
+/* Animated Neon Borders */
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(6, 182, 212, 0.4); }
+  50% { border-color: rgba(6, 182, 212, 0.9); }
+}
+
+.neon-border {
+  animation: border-glow 3s infinite;
+}
