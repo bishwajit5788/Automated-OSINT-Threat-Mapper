@@ -1,7 +1,7 @@
 # ⚡ AetherMap-OSINT (Automated OSINT Threat Mapper)
 
 <p align="center">
-  <a href="https://frontend-three-nu-86.vercel.app" target="_blank">
+  <a href="https://automated-osint-threat-mapper.vercel.app" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-Vercel_Production-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo on Vercel" />
   </a>
   <img src="https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  🚀 <strong>Live Interactive Threat Topology App:</strong> <a href="https://frontend-three-nu-86.vercel.app">https://frontend-three-nu-86.vercel.app</a>
+  🚀 <strong>Live Interactive Threat Topology App:</strong> <a href="https://automated-osint-threat-mapper.vercel.app">https://automated-osint-threat-mapper.vercel.app</a>
 </p>
 
 ---
