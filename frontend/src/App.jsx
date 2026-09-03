@@ -679,13 +679,13 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#050811] text-slate-100 overflow-hidden select-none">
+    <div className="flex flex-col h-screen w-screen bg-[#050811] text-slate-100 overflow-hidden">
       {/* -------------------------------------------------------------------
           TOP NAVIGATION & COMMAND BAR
           ------------------------------------------------------------------- */}
-      <header className="h-16 bg-[#0a0f1d]/90 border-b border-slate-800/90 px-6 flex items-center justify-between z-20 backdrop-blur-md">
+      <header className="h-16 bg-[#0a0f1d]/95 border-b border-slate-800/90 px-6 flex items-center justify-between z-20 backdrop-blur-md">
         {/* Brand Logo & Identity */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 select-none">
           <div className="relative">
             <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-lg shadow-cyan-500/20 text-black">
               <Radar className="w-5 h-5 text-slate-950 font-bold animate-pulse" />
@@ -718,22 +718,34 @@ export default function App() {
               e.preventDefault();
               handleInitiateRecon(targetDomain);
             }}
-            className="flex-1 relative flex items-center"
+            className="flex-1 relative flex items-center group"
           >
-            <div className="absolute left-3 text-slate-500 pointer-events-none">
-              <Search className="w-4 h-4 text-cyan-400" />
+            <div className="absolute left-3.5 text-cyan-400 pointer-events-none flex items-center">
+              <Search className="w-4 h-4" />
             </div>
             <input
               type="text"
               value={targetDomain}
               onChange={(e) => setTargetDomain(e.target.value)}
-              placeholder="Enter Target Domain (e.g. tesla.com, uber.com)..."
-              className="w-full bg-[#050811] border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 pl-9 pr-24 py-2 rounded-lg text-xs font-mono text-white placeholder-slate-500 transition-all outline-none"
+              placeholder="Enter Target Domain (e.g. tesla.com, google.com)..."
+              className="w-full bg-[#070d1d] hover:bg-[#0a1228] focus:bg-[#0a142c] border-2 border-slate-700/80 hover:border-cyan-500/70 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 pl-10 pr-28 py-2 rounded-lg text-sm font-mono font-medium text-cyan-100 placeholder-slate-500 caret-cyan-400 transition-all outline-none shadow-inner select-text"
+              autoComplete="off"
+              spellCheck="false"
             />
+            {targetDomain && (
+              <button
+                type="button"
+                onClick={() => setTargetDomain('')}
+                className="absolute right-20 text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition-all"
+                title="Clear input"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="submit"
-              disabled={loading}
-              className="absolute right-1 px-3 py-1.2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-mono font-bold text-xs rounded-md flex items-center space-x-1.5 shadow-md shadow-cyan-500/20 transition-all disabled:opacity-50"
+              disabled={loading || !targetDomain.trim()}
+              className="absolute right-1 px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-mono font-bold text-xs rounded-md flex items-center space-x-1.5 shadow-md shadow-cyan-500/30 transition-all disabled:opacity-40 select-none cursor-pointer"
             >
               {loading ? (
                 <>
