@@ -1,6 +1,9 @@
 # ⚡ AetherMap-OSINT (Automated OSINT Threat Mapper)
 
 <p align="center">
+  <a href="https://frontend-three-nu-86.vercel.app" target="_blank">
+    <img src="https://img.shields.io/badge/Live_Demo-Vercel_Production-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo on Vercel" />
+  </a>
   <img src="https://img.shields.io/badge/FastAPI-0.110.0-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
@@ -8,6 +11,10 @@
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4.17-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Vite-6.1.0-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License" />
+</p>
+
+<p align="center">
+  🚀 <strong>Live Interactive Threat Topology App:</strong> <a href="https://frontend-three-nu-86.vercel.app">https://frontend-three-nu-86.vercel.app</a>
 </p>
 
 ---
