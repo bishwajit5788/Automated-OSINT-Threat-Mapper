@@ -712,7 +712,7 @@ export default function App() {
         </div>
 
         {/* Search & Action Input Bar */}
-        <div className="flex items-center space-x-3 max-w-xl w-full mx-6">
+        <div className="flex items-center space-x-3 max-w-2xl w-full mx-6">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -720,15 +720,15 @@ export default function App() {
             }}
             className="flex-1 relative flex items-center group"
           >
-            <div className="absolute left-3.5 text-cyan-400 pointer-events-none flex items-center">
-              <Search className="w-4 h-4" />
+            <div className="absolute left-4 text-cyan-400 pointer-events-none flex items-center">
+              <Search className="w-5 h-5" />
             </div>
             <input
               type="text"
               value={targetDomain}
               onChange={(e) => setTargetDomain(e.target.value)}
-              placeholder="Enter Target Domain (e.g. tesla.com, google.com)..."
-              className="w-full bg-[#070d1d] hover:bg-[#0a1228] focus:bg-[#0a142c] border-2 border-slate-700/80 hover:border-cyan-500/70 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 pl-10 pr-28 py-2 rounded-lg text-sm font-mono font-medium text-cyan-100 placeholder-slate-500 caret-cyan-400 transition-all outline-none shadow-inner select-text"
+              placeholder="Enter Target Domain (e.g. tesla.com, cutm.ac.in)..."
+              className="w-full bg-[#070d1d] hover:bg-[#0a1228] focus:bg-[#0b1633] border-2 border-slate-700/90 hover:border-cyan-500/80 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/25 pl-12 pr-32 py-2.5 rounded-xl text-base font-mono font-semibold text-white placeholder-slate-500 caret-cyan-400 transition-all outline-none shadow-lg shadow-black/40 select-text"
               autoComplete="off"
               spellCheck="false"
             />
@@ -736,25 +736,25 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setTargetDomain('')}
-                className="absolute right-20 text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition-all"
+                className="absolute right-24 text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-slate-800 transition-all cursor-pointer"
                 title="Clear input"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
             <button
               type="submit"
               disabled={loading || !targetDomain.trim()}
-              className="absolute right-1 px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-mono font-bold text-xs rounded-md flex items-center space-x-1.5 shadow-md shadow-cyan-500/30 transition-all disabled:opacity-40 select-none cursor-pointer"
+              className="absolute right-1.5 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-mono font-bold text-xs tracking-wider rounded-lg flex items-center space-x-1.5 shadow-md shadow-cyan-500/30 transition-all disabled:opacity-40 select-none cursor-pointer"
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>SCANNING</span>
                 </>
               ) : (
                 <>
-                  <Radio className="w-3.5 h-3.5" />
+                  <Radio className="w-4 h-4" />
                   <span>SCAN</span>
                 </>
               )}
@@ -762,7 +762,7 @@ export default function App() {
           </form>
 
           {/* Quick Preset Selector Pills */}
-          <div className="hidden xl:flex items-center space-x-1 font-mono text-[11px]">
+          <div className="hidden 2xl:flex items-center space-x-1 font-mono text-[11px]">
             <span className="text-slate-500 mr-1">PRESETS:</span>
             {PRESET_DOMAINS.map((domain) => (
               <button
