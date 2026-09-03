@@ -38,12 +38,7 @@ import {
   Zap,
 } from 'lucide-react';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL !== undefined
-    ? import.meta.env.VITE_API_BASE_URL
-    : typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000'
-    : null;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /* =========================================================================
    CUSTOM REACTFLOW NODE COMPONENTS
@@ -628,7 +623,8 @@ export default function App() {
     // If a dedicated API backend URL is provided (e.g. running local FastAPI server)
     if (API_BASE_URL) {
       try {
-        const response = await axios.post(`${API_BASE_URL}/api/recon`, { domain: cleanDomain }, { timeout: 8000 });
+        const endpoint = `${API_BASE_URL.replace(/\/+$/, '')}/api/recon`;
+        const response = await axios.post(endpoint, { domain: cleanDomain }, { timeout: 8000 });
         if (response.data) {
           setReconData(response.data);
           buildGraphFromData(response.data);
