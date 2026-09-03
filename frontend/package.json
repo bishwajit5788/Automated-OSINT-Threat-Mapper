@@ -1,5 +1,5 @@
 {
-  "name": "aethermap-osint-frontend",
+  "name": "automated-osint-threat-mapper",
   "private": true,
   "version": "1.0.0",
   "type": "module",
