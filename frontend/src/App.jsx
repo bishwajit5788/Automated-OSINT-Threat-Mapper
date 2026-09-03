@@ -164,8 +164,14 @@ const ServiceNode = ({ data }) => {
     ? 'bg-amber-500 text-black'
     : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
 
+  const handleBoxClick = () => {
+    if (hasVulns && data.onSelectMitigation) {
+      data.onSelectMitigation(data.vulnerabilities[0]?.cve_id);
+    }
+  };
+
   return (
-    <div className="relative group cursor-pointer">
+    <div className="relative group cursor-pointer" onClick={handleBoxClick}>
       <div className={`rounded-xl p-4 shadow-xl min-w-[260px] text-left transition-all duration-200 ${containerClasses}`}>
         <Handle
           type="target"
@@ -211,13 +217,28 @@ const ServiceNode = ({ data }) => {
           {data.product || 'Unknown Product'} {data.version ? `v${data.version}` : ''}
         </div>
 
-        {/* Vulnerability Badges List */}
+        {/* Vulnerability Badges List with interactive onClick */}
         {hasVulns && (
-          <div className="mt-2.5 pt-2 border-t border-red-900/50 space-y-1">
+          <div className="mt-2.5 pt-2 border-t border-red-900/50 space-y-1.5">
             {data.vulnerabilities.map((v, i) => (
-              <div key={i} className="flex items-center justify-between text-[10px] font-mono bg-black/40 px-2 py-1 rounded">
-                <span className="font-bold text-red-400">{v.cve_id}</span>
-                <span className="text-red-300 font-semibold">CVSS {v.cvss_score?.toFixed(1) || '0.0'}</span>
+              <div
+                key={i}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (data.onSelectMitigation) {
+                    data.onSelectMitigation(v.cve_id);
+                  }
+                }}
+                className="flex items-center justify-between text-[10px] font-mono bg-black/50 hover:bg-red-900/80 px-2 py-1.5 rounded border border-red-500/40 hover:border-red-400 cursor-pointer transition-all group/cve shadow-sm"
+                title="Click to view Remediation Patch Guide"
+              >
+                <span className="font-bold text-red-400 group-hover/cve:text-white flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-red-400" />
+                  {v.cve_id}
+                </span>
+                <span className="text-amber-400 font-bold group-hover/cve:text-white flex items-center gap-0.5">
+                  PATCH CODE →
+                </span>
               </div>
             ))}
           </div>
@@ -485,6 +506,61 @@ export default function App() {
   const [engineMode, setEngineMode] = useState('EDGE_RECON');
   const [errorMessage, setErrorMessage] = useState(null);
 
+  // 1. State hook to track the chosen CVE mitigation
+  const [selectedMitigation, setSelectedMitigation] = useState(null);
+
+  // 2. Structured lookup catalog linking CVE strings to real-world patch code snippets
+  const mitigationDatabase = {
+    "CVE-2023-38408": {
+      title: "OpenSSH Agent RCE Hardening",
+      steps: [
+        "Upgrade system OpenSSH tools to version >= 9.3p2",
+        "Set 'AllowAgentForwarding no' inside your standard /etc/ssh/sshd_config layout file."
+      ],
+      codeSnippet: `# 1. Upgrade OpenSSH tools to version >= 9.3p2\nsudo apt update && sudo apt install --only-upgrade openssh-server openssh-client\n\n# 2. Set 'AllowAgentForwarding no' in sshd_config\necho "AllowAgentForwarding no" | sudo tee -a /etc/ssh/sshd_config.d/hardening.conf\n\n# 3. Reload daemon to apply changes\nsudo sshd -t && sudo systemctl restart sshd`
+    },
+    "CVE-2021-44228": {
+      title: "Log4Shell Java Remediation",
+      steps: [
+        "Recompile app framework using Log4j version >= 2.17.1",
+        "Inject operational flag: '-Dlog4j2.formatMsgNoLookups=true' into the global JVM deployment profile configuration."
+      ],
+      codeSnippet: `# 1. Inject operational JVM startup flag\nexport JAVA_OPTS="$JAVA_OPTS -Dlog4j2.formatMsgNoLookups=true"\n\n# 2. Run application with lookup lockdown\njava -Dlog4j2.formatMsgNoLookups=true -jar application.jar`
+    },
+    "CVE-2022-22965": {
+      title: "Spring4Shell RCE Remediation",
+      steps: [
+        "Upgrade Spring Framework to version >= 5.3.18 or >= 5.2.20",
+        "Enforce WebDataBinder disallowedFields blacklist pattern in web controllers."
+      ],
+      codeSnippet: `// Controller Binder Safeguard\n@InitBinder\npublic void setAllowedFields(WebDataBinder dataBinder) {\n    dataBinder.setDisallowedFields(new String[]{"class.*", "Class.*", "*.class.*", "*.Class.*"});\n}`
+    },
+    "CVE-2022-0543": {
+      title: "Redis Lua Sandbox Escape Patch",
+      steps: [
+        "Upgrade redis-server and liblua packages to latest vendor distro releases",
+        "Bind Redis exclusively to 127.0.0.1 or private VPC and enable protected-mode."
+      ],
+      codeSnippet: `# /etc/redis/redis.conf\nbind 127.0.0.1 ::1\nprotected-mode yes\nrequirepass <STRONG_AUTH_TOKEN>\n\n# Reload service\nsudo systemctl restart redis-server`
+    },
+    "CVE-2021-23017": {
+      title: "Nginx 1-Byte Resolver Overflow Patch",
+      steps: [
+        "Upgrade Nginx to version >= 1.20.1 or >= 1.21.0",
+        "Disable external DNS resolver directives in untrusted server blocks."
+      ],
+      codeSnippet: `sudo apt update && sudo apt install --only-upgrade nginx\nnginx -v`
+    },
+    "CVE-2022-24999": {
+      title: "Express body-parser Prototype Pollution",
+      steps: [
+        "Update body-parser to version >= 1.20.0 or express >= 4.18.0",
+        "Sanitize incoming JSON keys against '__proto__' and 'constructor' injections."
+      ],
+      codeSnippet: `npm install body-parser@latest express@latest`
+    }
+  };
+
   // Preset domains for rapid demonstration
   const PRESET_DOMAINS = ['tesla.com', 'uber.com', 'github.com', 'defense.gov', 'target.corp'];
 
@@ -579,6 +655,23 @@ export default function App() {
           banner: serv.banner || '',
           vulnerabilities: serv.vulnerabilities || [],
           raw: serv,
+          // 3. Interactive onClick hook wrapper right inside Node Generator mapping loop
+          onSelectMitigation: (cveId) => {
+            const targetCve = cveId || serv.vulnerabilities?.[0]?.cve_id;
+            if (targetCve && mitigationDatabase[targetCve]) {
+              setSelectedMitigation({ cve_id: targetCve, ...mitigationDatabase[targetCve] });
+            } else if (targetCve) {
+              setSelectedMitigation({
+                cve_id: targetCve,
+                title: `${targetCve} Security Remediation`,
+                steps: [
+                  "Upgrade the software component to the latest vendor-patched release.",
+                  "Harden network firewall and ingress rules to restrict exposure."
+                ],
+                codeSnippet: "# Apply system security updates\nsudo apt update && sudo apt upgrade -y"
+              });
+            }
+          },
         },
       });
 
@@ -1019,11 +1112,29 @@ export default function App() {
                         {vuln.description}
                       </p>
 
-                      <div className="pt-2 border-t border-red-900/40">
-                        <span className="text-[10px] font-bold text-amber-400 block mb-1">REMEDIATION GUIDANCE:</span>
-                        <p className="text-[11px] text-slate-400 font-sans italic">
-                          {vuln.remediation}
-                        </p>
+                      <div className="pt-2 border-t border-red-900/40 space-y-2">
+                        <div>
+                          <span className="text-[10px] font-bold text-amber-400 block mb-1">REMEDIATION GUIDANCE:</span>
+                          <p className="text-[11px] text-slate-400 font-sans italic">
+                            {vuln.remediation}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const meta = mitigationDatabase[vuln.cve_id] || {
+                              title: `${vuln.cve_id} Security Hardening`,
+                              steps: [vuln.remediation || "Apply latest vendor security patch."],
+                              codeSnippet: "# Apply system security updates\nsudo apt update && sudo apt upgrade -y"
+                            };
+                            setSelectedMitigation({ cve_id: vuln.cve_id, ...meta });
+                          }}
+                          className="w-full py-1.5 px-2.5 bg-red-900/50 hover:bg-red-800/80 border border-red-500/50 rounded text-[11px] font-bold text-red-200 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        >
+                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          VIEW PATCH CODE & MITIGATION
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1047,6 +1158,104 @@ export default function App() {
               </button>
             </div>
           </aside>
+        )}
+
+        {/* -----------------------------------------------------------------
+            SECURITY MITIGATION & CODE PATCH PLAYBOOK MODAL
+            ----------------------------------------------------------------- */}
+        {selectedMitigation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative w-full max-w-2xl bg-[#090e1c] border-2 border-red-500/80 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-red-900/60 bg-gradient-to-r from-red-950/80 via-[#0a1124] to-[#090e1c] flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 bg-red-900/70 border border-red-500/80 rounded-xl text-red-300 shadow-lg shadow-red-500/20">
+                    <ShieldAlert className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-mono text-xs font-bold text-red-400 tracking-wider">
+                        SECURITY PATCH ADVISORY
+                      </span>
+                      <span className="px-2 py-0.5 bg-red-500 text-black font-mono font-extrabold text-[10px] rounded uppercase">
+                        {selectedMitigation.cve_id}
+                      </span>
+                    </div>
+                    <h2 className="text-base font-bold text-white tracking-wide mt-0.5">
+                      {selectedMitigation.title}
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedMitigation(null)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all cursor-pointer"
+                  title="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto font-mono text-xs">
+                {/* Step Guidelines */}
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                    REMEDIATION CHECKLIST & ACTION STEPS
+                  </span>
+                  <div className="space-y-2">
+                    {selectedMitigation.steps.map((step, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start space-x-3 bg-slate-950/80 border border-slate-800/80 p-3.5 rounded-lg shadow-sm"
+                      >
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/60 text-cyan-400 font-bold flex items-center justify-center text-[11px]">
+                          {idx + 1}
+                        </span>
+                        <p className="text-slate-200 font-sans text-xs leading-relaxed pt-0.5">
+                          {step}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Real-World Code Patch Snippet */}
+                {selectedMitigation.codeSnippet && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Terminal className="w-4 h-4 text-amber-400" />
+                        COMMAND-LINE / CODE PATCH IMPLEMENTATION
+                      </span>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(selectedMitigation.codeSnippet)}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-[10px] font-mono transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        Copy Snippet
+                      </button>
+                    </div>
+                    <pre className="p-4 bg-[#040711] border border-slate-800 rounded-xl text-emerald-400 text-[11px] font-mono leading-relaxed overflow-x-auto whitespace-pre shadow-inner">
+                      {selectedMitigation.codeSnippet}
+                    </pre>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 bg-[#070b17] flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <span className="flex items-center gap-1 text-slate-500">
+                  <Lock className="w-3.5 h-3.5 text-cyan-400" /> DevSecOps Automated Hardening Directive
+                </span>
+                <button
+                  onClick={() => setSelectedMitigation(null)}
+                  className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold rounded-lg transition-all cursor-pointer shadow-md shadow-red-900/40"
+                >
+                  Acknowledge & Close
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
