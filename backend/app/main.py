@@ -1,5 +1,4 @@
 """FastAPI application entrypoint for AetherMap-OSINT."""
-import hashlib
 import logging
 import os
 import uuid
@@ -9,6 +8,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.audit import init_audit, record_audit
+from app.confidence import apply_confidence
 from app.engines import history_diff, orchestrate_recon
 from app.schemas import ReconRequest, ReconResponse
 from app.security import auth_required, check_scan_rate_limit, client_key, require_api_key
@@ -47,7 +47,9 @@ async def execute_recon(request:Request,payload:ReconRequest,api_key:str=Depends
     actor=client_key(api_key,x_forwarded_for,host); check_scan_rate_limit(actor); request_id=request.state.request_id
     logger.info("Recon request target=%s max_assets=%s request_id=%s",payload.domain,payload.max_assets,request_id)
     try:
-        response=await orchestrate_recon(payload.domain,ports=payload.ports,max_assets=payload.max_assets); response.services=await assess_services_tls(response.services)
+        response=await orchestrate_recon(payload.domain,ports=payload.ports,max_assets=payload.max_assets)
+        response.services=await assess_services_tls(response.services)
+        response.services=apply_confidence(response.services)
         response.metadata.scanner_version=VERSION; response.metadata.authentication_required=auth_required(); response.metadata.rate_limit_per_window=max(1,min(int(os.getenv("SCAN_RATE_LIMIT","10")),60))
         actor_label="authenticated-api-key" if auth_required() else "anonymous-local"
         record_audit(actor_label,"recon",payload.domain,"success",request_id,{"max_assets":payload.max_assets,"ports":payload.ports})
@@ -65,7 +67,7 @@ async def get_history(domain:str,api_key:str=Depends(require_api_key)):
 
 @app.get("/api/recon/sample",tags=["Reconnaissance"],response_model=ReconResponse,summary="Return explicitly synthetic demo data")
 async def get_sample_recon(api_key:str=Depends(require_api_key)):
-    response=await orchestrate_recon("example.com",demo_mode=True); response.services=await assess_services_tls(response.services); response.metadata.scanner_version=VERSION; return response
+    response=await orchestrate_recon("example.com",demo_mode=True); response.services=await assess_services_tls(response.services); response.services=apply_confidence(response.services); response.metadata.scanner_version=VERSION; return response
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request:Request,exc:HTTPException):
