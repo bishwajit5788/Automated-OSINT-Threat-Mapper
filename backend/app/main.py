@@ -1,4 +1,5 @@
 """FastAPI application entrypoint for AetherMap-OSINT."""
+import hashlib
 import logging
 import os
 import uuid
@@ -29,10 +30,10 @@ app.add_middleware(CORSMiddleware,allow_origins=_configured_cors_origins(),allow
 
 @app.middleware("http")
 async def request_context(request:Request,call_next):
-    request_id=request.headers.get("X-Request-ID") or str(uuid.uuid4()); request.state.request_id=request_id
+    request.state.request_id=request.headers.get("X-Request-ID") or str(uuid.uuid4())
     try: response=await call_next(request)
     except Exception: raise
-    response.headers["X-Request-ID"]=request_id; response.headers["Cache-Control"]="no-store"; return response
+    response.headers["X-Request-ID"]=request.state.request_id; response.headers["Cache-Control"]="no-store"; return response
 
 @app.get("/",tags=["System"],summary="Service health and capability summary",response_model=Dict[str,Any])
 async def root_health_check():
@@ -42,17 +43,18 @@ async def root_health_check():
 async def health_check():return {"status":"ok","version":VERSION,"authentication_required":auth_required()}
 
 @app.post("/api/recon",tags=["Reconnaissance"],summary="Run authorized discovery and bounded active scan",response_model=ReconResponse,status_code=status.HTTP_200_OK)
-async def execute_recon(payload:ReconRequest,api_key:str=Depends(require_api_key),x_forwarded_for:str|None=Header(default=None,alias="X-Forwarded-For"),host:str|None=Header(default=None)):
-    actor=client_key(api_key,x_forwarded_for,host); check_scan_rate_limit(actor); request_id=str(uuid.uuid4())
+async def execute_recon(request:Request,payload:ReconRequest,api_key:str=Depends(require_api_key),x_forwarded_for:str|None=Header(default=None,alias="X-Forwarded-For"),host:str|None=Header(default=None)):
+    actor=client_key(api_key,x_forwarded_for,host); check_scan_rate_limit(actor); request_id=request.state.request_id
     logger.info("Recon request target=%s max_assets=%s request_id=%s",payload.domain,payload.max_assets,request_id)
     try:
         response=await orchestrate_recon(payload.domain,ports=payload.ports,max_assets=payload.max_assets); response.services=await assess_services_tls(response.services)
         response.metadata.scanner_version=VERSION; response.metadata.authentication_required=auth_required(); response.metadata.rate_limit_per_window=max(1,min(int(os.getenv("SCAN_RATE_LIMIT","10")),60))
-        record_audit(api_key,"recon",payload.domain,"success",request_id,{"max_assets":payload.max_assets,"ports":payload.ports})
+        actor_label="authenticated-api-key" if auth_required() else "anonymous-local"
+        record_audit(actor_label,"recon",payload.domain,"success",request_id,{"max_assets":payload.max_assets,"ports":payload.ports})
         return response
     except HTTPException: raise
     except Exception as exc:
-        record_audit(api_key,"recon",payload.domain,"error",request_id,{"error_type":type(exc).__name__}); logger.exception("Reconnaissance failed for %s",payload.domain)
+        record_audit("authenticated-api-key" if auth_required() else "anonymous-local","recon",payload.domain,"error",request_id,{"error_type":type(exc).__name__}); logger.exception("Reconnaissance failed for %s request_id=%s",payload.domain,request_id)
         raise HTTPException(status_code=502,detail="Reconnaissance upstream failed. Check server logs using the request ID.",headers={"X-Request-ID":request_id}) from exc
 
 @app.get("/api/recon/history/{domain}",tags=["Reconnaissance"],summary="Compare the two latest scans")
