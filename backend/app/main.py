@@ -1,6 +1,7 @@
 """FastAPI application entrypoint for AetherMap-OSINT."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
@@ -38,17 +39,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Do not combine '*' with credentials. Configure deployed frontend origins explicitly.
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+
+def _configured_cors_origins() -> list[str]:
+    configured = os.getenv("ALLOWED_ORIGINS", "")
+    if configured.strip():
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=_configured_cors_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Accept"],
@@ -105,7 +111,7 @@ async def execute_recon(payload: ReconRequest):
 
 @app.get("/api/recon/sample", tags=["Reconnaissance"], response_model=ReconResponse)
 async def get_sample_recon():
-    """Return a clearly marked demo dossier; it must not be interpreted as live findings."""
+    """Return a synthetic demonstration dossier; it must not be treated as live findings."""
     return await orchestrate_recon("example.com", demo_mode=True)
 
 
