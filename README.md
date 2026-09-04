@@ -3,20 +3,25 @@
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-Python-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/React-Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
-  <img src="https://img.shields.io/badge/Scanner-v3.1-111827?style=for-the-badge" alt="Scanner v3.1" />
+  <img src="https://img.shields.io/badge/Scanner-v3.2-111827?style=for-the-badge" alt="Scanner v3.2" />
   <img src="https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI" />
 </p>
 
-AetherMap-OSINT is a bounded, non-destructive attack-surface and vulnerability-triage platform. It combines Certificate Transparency discovery, public DNS resolution, real TCP connection scanning, protocol/TLS evidence collection, NVD CPE/CVE correlation, confidence scoring, and stable historical change detection.
+AetherMap-OSINT is a bounded, non-destructive attack-surface and vulnerability-triage platform. It combines Certificate Transparency discovery, public DNS resolution, real TCP/UDP probing, protocol/TLS evidence collection, NVD CPE/CVE correlation, confidence scoring, and stable historical change detection.
 
 > **Authorization:** active network probes contact selected target infrastructure. Use only against systems you are explicitly authorized to assess. No exploitation, credential attacks, brute force, persistence, or destructive testing is performed.
 
-## v3.1 production-hardening priorities
+## v3.2 TLS assessment and production hardening
 
 - **Asset fan-out:** crt.sh hostnames are individually resolved and scanned within request/deployment ceilings.
 - **Network safety:** only globally routable addresses are eligible for active scanning; private, loopback, link-local, multicast, reserved and unspecified addresses are rejected.
-- **Real TCP scanning:** bounded TCP connect checks with configurable concurrency and timeouts.
-- **Evidence-first detection:** TCP connection, protocol/banner, TLS version, ALPN and certificate SHA-256 evidence are retained when available.
+- **Real TCP/UDP scanning:** bounded TCP connects plus protocol-aware UDP probes with configurable limits.
+- **Evidence-first detection:** connection, protocol/banner, TLS and certificate evidence are retained instead of fabricating findings.
+- **TLS certificate intelligence:** subject, SAN, issuer, validity period, expiry countdown, fingerprint, key type/size/curve and signature algorithm are collected when the certificate is parseable.
+- **TLS trust checks:** hostname validation and system trust-store chain validation are performed separately from the evidence-preserving handshake.
+- **TLS protocol probing:** TLS 1.0, 1.1, 1.2 and 1.3 are tested independently where the local runtime permits the probe.
+- **TLS cipher assessment:** bounded TLS 1.2 cipher probing plus the standard TLS 1.3 suite set when the local OpenSSL CLI is available; weak accepted suites are flagged.
+- **Security-grade TLS score:** every assessed TLS service receives a 0–100 score, letter grade, finding IDs and evidence-backed remediation actions.
 - **CVE triage:** NVD CPE/CVE correlation is explicit and confidence-scored; unresolved products are not assigned fabricated CPEs.
 - **Stable history:** timestamps and execution duration do not cause false historical changes.
 - **Operational limits:** ports, assets, concurrency and network timeouts are bounded to prevent accidental scan amplification.
@@ -29,9 +34,11 @@ Target FQDN
   ├─► DNS ─► public IPv4/IPv6 candidates
   ├─► crt.sh ─► bounded hostname inventory
   │                 └─► DNS each hostname
-  └──────────────────────────────► bounded TCP connect scan
+  └──────────────────────────────► bounded TCP/UDP assessment
                                       ├─► protocol/banner evidence
-                                      └─► TLS handshake evidence
+                                      ├─► TLS protocol probes
+                                      ├─► TLS cipher probes
+                                      └─► certificate/trust analysis
                                                 │
                                                 ▼
                                       product/version evidence
@@ -52,6 +59,42 @@ Target FQDN
 ```
 
 NVD defines CPE as a standardized product/platform identification method and provides CPE/CVE applicability data. A CPE/CVE match is triage evidence, not automatic proof that a deployed instance is exploitable. citeturn0search0
+
+## TLS assessment output
+
+For TLS-enabled services, the API now exposes structured fields alongside raw evidence:
+
+```text
+TLS score / grade
+Supported protocols
+Rejected protocols
+Inconclusive protocol probes
+Supported cipher suites
+Weak cipher suites
+Cipher enumeration completeness
+Certificate subject / issuer / SAN
+Certificate validity start / expiry
+Days remaining
+Certificate SHA-256
+RSA/EC key information
+Signature algorithm
+TLS findings
+Evidence-backed remediation actions
+```
+
+Example finding flow:
+
+```text
+TLS_CERT_EXPIRED
+        ↓
+severity: CRITICAL
+        ↓
+certificate expiry evidence
+        ↓
+remediation: renew and deploy a valid certificate chain
+```
+
+The TLS score is an AetherMap heuristic for triage and is not a formal compliance certification or a replacement for a dedicated TLS auditing product.
 
 ## API
 
@@ -81,19 +124,25 @@ Synthetic demo data only. It is not live evidence.
 |---|---|---|
 | `ALLOWED_ORIGINS` | Exact frontend CORS origins | localhost origins |
 | `SCAN_PORTS` | Default TCP port profile | common ports |
-| `SCAN_CONCURRENCY` | Concurrent TCP probes | `24` |
+| `SCAN_UDP_PORTS` | UDP probe profile | `53,123,161,500,4500,5353` |
+| `SCAN_CONCURRENCY` | Concurrent TCP probes | `32` |
 | `MAX_ASSETS` | Deployment asset ceiling | `25` |
+| `MAX_IPS_PER_HOST` | Public IPs considered per hostname | `4` |
 | `SCAN_CONNECT_TIMEOUT` | TCP connect timeout | `1.5s` |
+| `SCAN_UDP_TIMEOUT` | UDP response timeout | `1.5s` |
 | `NVD_TIMEOUT` | NVD request timeout | `10s` |
 | `NVD_API_KEY` | Optional NVD API key | unset |
 | `AETHERMAP_HISTORY_DB` | SQLite history path | `data/aethermap_history.sqlite3` |
 
+TLS assessment also uses the host's installed CA trust store and, for bounded TLS 1.3 cipher probing, an available `openssl` executable. If a capability is unavailable locally, the scanner records an inconclusive/limited result instead of pretending the test completed.
+
 ## Evidence model
 
 ```text
-TCP connection
+TCP/UDP connection
  + protocol/banner evidence
- + TLS evidence
+ + TLS protocol/cipher evidence
+ + certificate/trust evidence
        ↓
 product + version
        ↓
@@ -106,7 +155,7 @@ confidence score
 triage finding
 ```
 
-Every vulnerability finding includes source, confidence, and evidence. The scanner deliberately distinguishes **correlated** from **confirmed** vulnerability status because vendor backports, configuration, mitigations and applicability conditions can change real-world exposure.
+Every vulnerability finding includes source, confidence, and evidence. TLS findings likewise retain the observed evidence and a concrete remediation action. The scanner deliberately distinguishes **correlated** from **confirmed** vulnerability status because vendor backports, configuration, mitigations and applicability conditions can change real-world exposure.
 
 ## Current scope
 
@@ -116,8 +165,17 @@ Supported now:
 - Multi-host DNS resolution
 - Public-IP safety filtering
 - Bounded TCP connect scanning
+- Bounded UDP probes
 - HTTP/SSH/limited protocol fingerprinting
-- TLS version/ALPN/certificate hash evidence
+- TLS 1.0/1.1/1.2/1.3 capability probing
+- TLS 1.2 cipher probing and bounded TLS 1.3 cipher enumeration
+- Weak cipher classification
+- Certificate subject/SAN/issuer extraction
+- Certificate validity and expiry assessment
+- Certificate hostname and system trust-store validation
+- RSA/EC certificate key information
+- Certificate signature algorithm checks
+- Security-grade TLS score and remediation
 - NVD CPE/CVE correlation
 - CVSS severity classification
 - Confidence-scored evidence
@@ -129,11 +187,8 @@ Intentionally not implemented yet:
 
 - Exploitation or credential attacks
 - Raw-packet SYN scanning
-- Comprehensive UDP scanning
 - Full OS fingerprinting
 - Complete protocol fingerprint coverage
-- Full TLS cipher/compliance auditing
-- Full NVD logical configuration/version-range evaluation
 - Authenticated application scanning
 - Cloud inventory
 - RDAP/ASN/BGP enrichment
@@ -141,6 +196,7 @@ Intentionally not implemented yet:
 - Multi-tenant RBAC
 - PostgreSQL/object-storage production persistence
 - Full vulnerability verification
+- TLS compliance certification against every external policy/profile
 
 These are engineering boundaries, not hidden capabilities.
 
@@ -184,7 +240,7 @@ npm run build
 
 ## Responsible use
 
-Use only within an approved assessment scope. An open port is an observation, not a vulnerability. A CPE/CVE correlation is not proof of exploitability. Keep active scanning disabled for assets outside an explicitly authorized scope.
+Use only within an approved assessment scope. An open port is an observation, not a vulnerability. A CPE/CVE correlation is not proof of exploitability. TLS results are evidence-backed configuration observations, not proof of exploitability or formal compliance. Keep active scanning disabled for assets outside an explicitly authorized scope.
 
 ## License
 
