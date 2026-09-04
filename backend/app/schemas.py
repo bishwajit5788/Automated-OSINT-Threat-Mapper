@@ -2,7 +2,7 @@
 
 import re
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -17,7 +17,8 @@ class SeverityLevel(str, Enum):
 
 class ReconRequest(BaseModel):
     domain: str = Field(..., min_length=3, max_length=253, examples=["example.com"])
-    ports: Optional[List[int]] = Field(default=None, max_length=128, description="Optional TCP ports; maximum 128 per request.")
+    ports: Optional[List[int]] = Field(default=None, max_length=128)
+    max_assets: int = Field(default=25, ge=1, le=100)
 
     @field_validator("domain")
     @classmethod
@@ -49,6 +50,14 @@ class Subdomain(BaseModel):
     status: str = "Unknown"
     source: str = "crt.sh"
     last_seen: str = "Unknown"
+    scanned: bool = False
+
+
+class Evidence(BaseModel):
+    type: str
+    value: str
+    source: str
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class Vulnerability(BaseModel):
@@ -60,10 +69,14 @@ class Vulnerability(BaseModel):
     port: int = Field(default=0, ge=0, le=65535)
     remediation: str = "Review the vendor advisory and apply the supported security update."
     confidence: str = "unknown"
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
     source: str = "unknown"
+    evidence: List[Evidence] = Field(default_factory=list)
 
 
 class PortService(BaseModel):
+    host: str = "Unknown"
+    ip: str = "Unknown"
     port: int = Field(..., ge=1, le=65535)
     protocol: str = "tcp"
     service_name: str = "Unknown"
@@ -72,6 +85,7 @@ class PortService(BaseModel):
     banner: str = "Unknown"
     cpe: Optional[str] = None
     vulnerabilities: List[Vulnerability] = Field(default_factory=list)
+    evidence: List[Evidence] = Field(default_factory=list)
     status: str = "open"
 
 
@@ -93,8 +107,10 @@ class ReconMetadata(BaseModel):
     findings_mode: str = "passive-active"
     scan_ports: List[int] = Field(default_factory=list)
     open_ports: int = 0
+    hosts_scanned: int = 0
     historical_change: str = "baseline"
     authorized_use_only: bool = True
+    scanner_version: str = "3.0.0"
 
 
 class ReconResponse(BaseModel):
