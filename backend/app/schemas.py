@@ -1,15 +1,13 @@
-"""Pydantic schemas and data validation models for AetherMap-OSINT."""
+"""Pydantic schemas for AetherMap-OSINT."""
 
 import re
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 
 class SeverityLevel(str, Enum):
-    """Vulnerability severity classification."""
-
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
@@ -18,43 +16,34 @@ class SeverityLevel(str, Enum):
 
 
 class ReconRequest(BaseModel):
-    """Reconnaissance task initiation payload."""
-
-    domain: str = Field(
-        ...,
-        min_length=3,
-        max_length=253,
-        description="Target DNS hostname. Active reconnaissance must be authorized.",
-        examples=["example.com"],
-    )
+    domain: str = Field(..., min_length=3, max_length=253, examples=["example.com"])
+    ports: Optional[List[int]] = Field(default=None, max_length=128, description="Optional TCP ports; maximum 128 per request.")
 
     @field_validator("domain")
     @classmethod
     def sanitize_domain(cls, v: str) -> str:
-        """Normalize an FQDN and reject URLs, IP literals, localhost, and malformed names."""
         clean = v.strip().lower()
-        clean = re.sub(r"^https?://", "", clean)
-        clean = clean.split("/")[0].split(":")[0].strip().rstrip(".")
-
+        clean = re.sub(r"^https?://", "", clean).split("/")[0].split(":")[0].rstrip(".")
         if not clean or clean == "localhost":
             raise ValueError("A public DNS hostname is required.")
-
         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", clean):
             raise ValueError("IP literals are not accepted; provide a DNS hostname.")
-
         labels = clean.split(".")
-        if len(labels) < 2 or any(
-            not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
-            for label in labels
-        ):
+        if len(labels) < 2 or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in labels):
             raise ValueError("Invalid domain format. Provide a valid FQDN such as example.com.")
-
         return clean
+
+    @field_validator("ports")
+    @classmethod
+    def validate_ports(cls, v: Optional[List[int]]) -> Optional[List[int]]:
+        if v is None:
+            return v
+        if any(port < 1 or port > 65535 for port in v):
+            raise ValueError("Ports must be between 1 and 65535.")
+        return sorted(set(v))
 
 
 class Subdomain(BaseModel):
-    """Discovered subdomain entity model."""
-
     name: str
     ip: str = "Unknown"
     status: str = "Unknown"
@@ -63,8 +52,6 @@ class Subdomain(BaseModel):
 
 
 class Vulnerability(BaseModel):
-    """Correlated vulnerability entity model."""
-
     cve_id: str
     severity: SeverityLevel = SeverityLevel.INFO
     cvss_score: float = Field(default=0.0, ge=0.0, le=10.0)
@@ -77,21 +64,18 @@ class Vulnerability(BaseModel):
 
 
 class PortService(BaseModel):
-    """Observed network service model."""
-
     port: int = Field(..., ge=1, le=65535)
     protocol: str = "tcp"
     service_name: str = "Unknown"
     product: str = "Unknown"
     version: str = "Unknown"
     banner: str = "Unknown"
+    cpe: Optional[str] = None
     vulnerabilities: List[Vulnerability] = Field(default_factory=list)
-    status: str = "observed"
+    status: str = "open"
 
 
 class VulnerabilitySummary(BaseModel):
-    """Aggregated severity counts."""
-
     critical: int = 0
     high: int = 0
     medium: int = 0
@@ -101,20 +85,19 @@ class VulnerabilitySummary(BaseModel):
 
 
 class ReconMetadata(BaseModel):
-    """Execution telemetry and source diagnostics."""
-
     execution_time_ms: float = 0.0
     sources_queried: List[str] = Field(default_factory=list)
     dns_resolved: bool = False
     crt_sh_status: str = "not-run"
     network_intel_status: str = "not-run"
-    findings_mode: str = "simulated"
+    findings_mode: str = "passive-active"
+    scan_ports: List[int] = Field(default_factory=list)
+    open_ports: int = 0
+    historical_change: str = "baseline"
     authorized_use_only: bool = True
 
 
 class ReconResponse(BaseModel):
-    """Complete synthesized attack-surface dossier."""
-
     target_domain: str
     root_ip: str = "Unknown"
     timestamp: str
