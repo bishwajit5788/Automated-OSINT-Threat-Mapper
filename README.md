@@ -12,7 +12,7 @@
 
 AetherMap-OSINT is a defensive security research application for mapping public-facing assets from passive OSINT sources and presenting findings as an interactive topology.
 
-**Important:** the current repository intentionally does **not** claim that arbitrary targets have real open ports or CVEs. Certificate Transparency and DNS are real data sources; network-service findings are limited to an explicitly labeled synthetic demo catalog until a real provider integration is added.
+> **Important:** the current repository intentionally does **not** claim that arbitrary targets have real open ports or CVEs. Certificate Transparency and DNS are real data sources; network-service findings are limited to an explicitly labeled synthetic demo catalog until a real provider integration is added.
 
 ## What the current version does
 
@@ -89,7 +89,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q
+python -m pytest -q
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -106,7 +106,7 @@ npm run dev
 
 UI: `http://localhost:5173`
 
-For production, set `VITE_API_URL` to the deployed API origin. The frontend keeps the API origin configurable instead of silently embedding a development URL.
+For production, set `VITE_API_URL` to the deployed API origin. A ready-to-copy template is provided at `frontend/.env.example`. Also set the backend `ALLOWED_ORIGINS` environment variable to the exact frontend origin, for example `https://automated-osint-threat-mapper.vercel.app`.
 
 ## API
 
@@ -114,7 +114,7 @@ For production, set `VITE_API_URL` to the deployed API origin. The frontend keep
 Returns service and engine status.
 
 ### `GET /api/health`
-Returns a minimal health response.
+Returns a minimal health response suitable for deployment probes.
 
 ### `POST /api/recon`
 Runs passive OSINT discovery for an authorized hostname.
@@ -128,13 +128,13 @@ Runs passive OSINT discovery for an authorized hostname.
 The production response reports the actual DNS/CT source status. It does **not** invent IP addresses, subdomains, service banners, or CVEs when an upstream source is unavailable.
 
 ### `GET /api/recon/sample`
-Returns a synthetic demonstration dossier so the UI can be tested without treating synthetic findings as real-world evidence. The response sets `metadata.findings_mode` to `demo`.
+Returns a synthetic demonstration dossier so the UI can be tested without implying that the target has those services or vulnerabilities. The response sets `metadata.findings_mode` to `demo`.
 
 ## Data and vulnerability semantics
 
 A CVE should only be attached to a real observed product/version after that evidence is obtained from an appropriate source. The UI therefore displays finding confidence and source fields.
 
-The demo catalog contains examples such as OpenSSH, Log4j, and Spring findings. These are educational records only. For example, NVD documents CVE-2023-38408 as affecting OpenSSH before the fixed 9.3p2 release, CVE-2021-44228 as affecting vulnerable Log4j2 versions, and CVE-2022-22965 as affecting specific Spring Framework versions and deployment conditions. Always verify product, version, configuration, exploitability, and vendor guidance before acting on a CVE. citeturn227539search2turn227539search0turn227539search4
+The demo catalog contains educational examples such as OpenSSH and Log4j. NVD documents CVE-2023-38408 as affecting OpenSSH before the fixed 9.3p2 release and CVE-2021-44228 as affecting vulnerable Log4j2 releases under defined conditions. Always verify product, version, configuration, exploitability, and vendor guidance before acting on a CVE.
 
 ## Threat score
 
@@ -142,12 +142,12 @@ The current score is a **heuristic presentation metric**, not a CVSS score and n
 
 ## Roadmap
 
-1. Replace the demo network catalog with an opt-in provider adapter (for example, Shodan or another authorized asset-intelligence API).
+1. Replace the demo network catalog with an opt-in provider adapter such as Shodan or another authorized asset-intelligence API.
 2. Add NVD/CPE correlation from observed product/version data instead of attaching fixed CVEs.
 3. Add evidence objects for every finding: source URL, collection time, raw excerpt/hash, and confidence.
 4. Add scan jobs, persistence, diffing, and “what changed since last scan” views.
 5. Add SSRF protections and egress controls before introducing server-side URL fetching beyond approved providers.
-6. Add structured logging, rate limiting, authentication, and configurable production CORS origins.
+6. Add authentication, rate limiting, structured audit logs, and deployment-specific CORS configuration.
 7. Add frontend component tests and end-to-end smoke tests.
 
 ## Responsible use
