@@ -2,7 +2,7 @@
 
 import re
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 class SeverityLevel(str, Enum):
@@ -38,6 +38,7 @@ class Vulnerability(BaseModel):
 
 class PortService(BaseModel):
     host:str="Unknown"; ip:str="Unknown"; port:int=Field(...,ge=1,le=65535); protocol:str="tcp"; service_name:str="Unknown"; product:str="Unknown"; version:str="Unknown"; banner:str="Unknown"; cpe:Optional[str]=None; vulnerabilities:List[Vulnerability]=Field(default_factory=list); evidence:List[Evidence]=Field(default_factory=list); status:str="open"
+    tls_score:int=Field(default=0,ge=0,le=100); tls_grade:str="N/A"; tls_supported_protocols:List[str]=Field(default_factory=list); tls_supported_ciphers:List[str]=Field(default_factory=list); tls_weak_ciphers:List[str]=Field(default_factory=list); tls_certificate:Dict[str,Any]=Field(default_factory=dict); tls_findings:List[Dict[str,str]]=Field(default_factory=list); tls_remediations:List[Dict[str,str]]=Field(default_factory=list); tls_cipher_enumeration_complete:bool=False
 
 class VulnerabilitySummary(BaseModel):
     critical:int=0; high:int=0; medium:int=0; low:int=0; info:int=0; total:int=0
