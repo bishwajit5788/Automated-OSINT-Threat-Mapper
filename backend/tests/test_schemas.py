@@ -1,7 +1,12 @@
-from pydantic import ValidationError
-import pytest
+from pathlib import Path
+import sys
 
-from app.schemas import ReconRequest
+import pytest
+from pydantic import ValidationError
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.schemas import ReconRequest  # noqa: E402
 
 
 def test_domain_normalization():
