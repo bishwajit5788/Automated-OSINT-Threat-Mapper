@@ -14,16 +14,17 @@ from app.schemas import ReconRequest, ReconResponse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")
 logger = logging.getLogger("aethermap.main")
+VERSION = "3.0.0"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing AetherMap-OSINT reconnaissance API")
+    logger.info("Initializing AetherMap-OSINT scanner %s", VERSION)
     yield
-    logger.info("Shutting down AetherMap-OSINT reconnaissance API")
+    logger.info("Shutting down AetherMap-OSINT scanner")
 
 
-app = FastAPI(title="AetherMap-OSINT API", description="Authorized-use OSINT attack-surface mapping with bounded TCP service fingerprinting and NVD correlation.", version="2.0.0", docs_url="/docs", redoc_url="/redoc", lifespan=lifespan)
+app = FastAPI(title="AetherMap-OSINT API", description="Authorized-use OSINT attack-surface mapping with bounded TCP/TLS fingerprinting and NVD correlation.", version=VERSION, docs_url="/docs", redoc_url="/redoc", lifespan=lifespan)
 
 
 def _configured_cors_origins() -> list[str]:
@@ -36,19 +37,19 @@ app.add_middleware(CORSMiddleware, allow_origins=_configured_cors_origins(), all
 
 @app.get("/", tags=["System"], summary="Root service health probe", response_model=Dict[str, Any])
 async def root_health_check():
-    return {"service": "AetherMap-OSINT", "status": "OPERATIONAL", "version": "2.0.0", "engines": {"crt_sh": "passive", "dns": "active", "tcp_scanner": "real-connect", "cve_correlator": "NVD-CPE"}}
+    return {"service": "AetherMap-OSINT", "status": "OPERATIONAL", "version": VERSION, "engines": {"crt_sh": "passive", "dns": "active-safe-public-only", "tcp_scanner": "bounded-real-connect", "tls": "handshake-evidence", "cve_correlator": "NVD-CPE"}}
 
 
 @app.get("/api/health", tags=["System"])
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "version": VERSION}
 
 
-@app.post("/api/recon", tags=["Reconnaissance"], summary="Run authorized passive discovery and bounded TCP scan", response_model=ReconResponse, status_code=status.HTTP_200_OK)
+@app.post("/api/recon", tags=["Reconnaissance"], summary="Run authorized passive discovery and bounded active scan", response_model=ReconResponse, status_code=status.HTTP_200_OK)
 async def execute_recon(payload: ReconRequest):
-    logger.info("Recon request for '%s' (%s)", payload.domain, "custom ports" if payload.ports else "common ports")
+    logger.info("Recon request for '%s' (%s, max_assets=%s)", payload.domain, "custom ports" if payload.ports else "common ports", payload.max_assets)
     try:
-        return await orchestrate_recon(payload.domain, ports=payload.ports)
+        return await orchestrate_recon(payload.domain, ports=payload.ports, max_assets=payload.max_assets)
     except Exception as exc:
         logger.exception("Reconnaissance failed for '%s'", payload.domain)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Reconnaissance upstream failed. Check service logs for diagnostics.") from exc
@@ -56,7 +57,11 @@ async def execute_recon(payload: ReconRequest):
 
 @app.get("/api/recon/history/{domain}", tags=["Reconnaissance"], summary="Compare the two latest scans")
 async def get_history(domain: str):
-    return {"domain": domain, **history_diff(domain)}
+    try:
+        normalized = ReconRequest(domain=domain).domain
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"domain": normalized, **history_diff(normalized)}
 
 
 @app.get("/api/recon/sample", tags=["Reconnaissance"], response_model=ReconResponse)
