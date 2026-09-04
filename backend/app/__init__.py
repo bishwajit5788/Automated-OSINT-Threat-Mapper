@@ -1,6 +1,3 @@
-"""AetherMap-OSINT Backend Application Package.
+"""AetherMap-OSINT backend package."""
 
-Automated Open Source Intelligence (OSINT) Threat Mapping and Attack Surface Visualization.
-"""
-
-__version__ = "1.0.0"
+__version__ = "1.1.0"
